@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Stomp 测试</title>
+    <script src="https://lib.baomitu.com/sockjs-client/1.4.0/sockjs.min.js"></script>
+    <script src="https://lib.baomitu.com/stomp.js/2.3.3/stomp.min.js"></script>
+    <script src="https://lib.baomitu.com/jquery/3.4.1/jquery.min.js"></script>
+</head>
+<body onload="disconnect()">
+<noscript><h2 style="color: #e80b0a;">Sorry，浏览器不支持WebSocket</h2></noscript>
+<div>
+    <div>
+        <button id="connect" onclick="connect();">连接</button>
+        <button disabled="disabled" id="disconnect" onclick="disconnect();">断开连接</button>
+    </div>
+    <div id="conversationDiv">
+        <label>输入你的名字</label><input id="name" type="text"/>
+        <button id="sendName" onclick="sendName();">发送</button>
+        <p id="response"></p>
+        <p id="callback"></p>
+    </div>
+</div>
+
+<script type="text/javascript">
+    var stompClient = null;
+    function setConnected(connected) {
+        document.getElementById("connect").disabled = connected;
+        document.getElementById("disconnect").disabled = !connected;
+        document.getElementById("conversationDiv").style.visibility = connected ? 'visible' : 'hidden';
+        $("#response").html();
+        $("#callback").html();
+    }
+    function connect() {
+        var socket = new SockJS('http://localhost:8084/test/websocket');
+        stompClient = Stomp.over(socket);
+        stompClient.connect({}, function (frame) {
+            setConnected(true);
+            console.log('Connected:' + frame);
+            stompClient.subscribe('/topic/greeting', function (response) {
+                showResponse(JSON.parse(response.body).content);
+            });
+            // 另外再注册一个一对一的客户端
+            stompClient.subscribe('/user/liu/msg', function (response) {
+                showCallback(response.body);
+            });
+        });
+    }
+    function disconnect() {
+        if (stompClient != null) {
+            stompClient.disconnect();
+        }
+        setConnected(false);
+        console.log('Disconnected');
+    }
+    function sendName() {
+        var message = $('#name').val();
+        console.log('name:' + message);
+        stompClient.send("/app/hello", {}, JSON.stringify({'message': message}));
+    }
+    function showResponse(message) {
+        $("#response").html(message);
+    }
+    function showCallback(message) {
+        $("#callback").html(message);
+    }
+</script>
+</body>
+</html>
